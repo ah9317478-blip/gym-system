@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة اشتراكات ومبيعات الجيم</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Cairo) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection *, #shiftPrintSection, #shiftPrintSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; }
+            #shiftPrintSection { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- ========================================== -->
+    <!-- 🛒 واجهة الكاشير الأساسية -->
+    <!-- ========================================== -->
+    <div id="cashierView" class="flex flex-col min-h-screen w-full">
+        <!-- Header / Navbar -->
+        <header class="bg-slate-800 border-b border-slate-700 shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="adminTriggerBtn" onclick="handleAdminTrigger()" class="bg-amber-500 text-slate-900 p-3 rounded-xl shadow-md font-bold text-xl flex items-center justify-center cursor-pointer hover:bg-amber-400 transition" title="اضغط 3 مرات هنا للوصول لصفحة الآدمن">
+                        <i class="fa-solid fa-dumbbell"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-black tracking-wide text-white">إدارة الجيم والكافيه</h1>
+                        <p class="text-xs text-slate-400">النظام السحابي المؤمن</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                    <div id="syncStatus" class="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5">
+                        <i class="fa-solid fa-spinner fa-spin"></i> جاري الاتصال...
+                    </div>
+                    <button onclick="openShiftModal()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-900 font-bold px-3.5 py-2 rounded-xl shadow transition text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-cash-register text-slate-900"></i>
+                        <span>تقفيل الشิفت</span>
+                    </button>
+                    <button onclick="openSalesModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-3 py-2 rounded-xl shadow transition text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-store text-amber-400"></i>
+                        <span>الكافيه</span>
+                    </button>
+                    <button onclick="openExpensesModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-3 py-2 rounded-xl shadow transition text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-invoice-dollar text-rose-400"></i>
+                        <span>المصاريف</span>
+                    </button>
+                    <button onclick="openModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2 rounded-xl shadow-lg transition duration-200 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>مشترِك</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">إجمالي المشتركين</p><h3 id="statTotal" class="text-xl font-black text-white mt-1">0</h3></div>
+                    <div class="bg-blue-500/15 text-blue-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-users"></i></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">اشتراكات سارية</p><h3 id="statActive" class="text-xl font-black text-emerald-400 mt-1">0</h3></div>
+                    <div class="bg-emerald-500/15 text-emerald-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-user-check"></i></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">إيرادات الاشتراكات</p><h3 id="statSubRevenue" class="text-xl font-black text-amber-400 mt-1">0 <span class="text-xs font-normal">ج.م</span></h3></div>
+                    <div class="bg-amber-500/15 text-amber-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-wallet"></i></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">مبيعات الكافيه</p><h3 id="statStoreRevenue" class="text-xl font-black text-purple-400 mt-1">0 <span class="text-xs font-normal">ج.م</span></h3></div>
+                    <div class="bg-purple-500/15 text-purple-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-basket-shopping"></i></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">إجمالي المصاريف</p><h3 id="statExpenses" class="text-xl font-black text-rose-400 mt-1">0 <span class="text-xs font-normal">ج.م</span></h3></div>
+                    <div class="bg-rose-500/15 text-rose-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex items-center justify-between">
+                    <div><p class="text-slate-400 text-xs font-medium">صافي الأرباح</p><h3 id="statNetProfit" class="text-xl font-black text-cyan-400 mt-1">0 <span class="text-xs font-normal">ج.م</span></h3></div>
+                    <div class="bg-cyan-500/15 text-cyan-400 p-2.5 rounded-xl text-base"><i class="fa-solid fa-chart-line"></i></div>
+                </div>
+            </div>
+
+            <!-- Filter & Search Controls -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="relative w-full md:w-96">
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="searchInput" oninput="renderMembers()" placeholder="ابحث باسم المشترك أو رقم الهاتف..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pr-11 pl-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition">
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                    <button onclick="setFilter('all')" id="filter-all" class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl bg-amber-500 text-slate-900 transition whitespace-nowrap">الكل</button>
+                    <button onclick="setFilter('active')" id="filter-active" class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap">السارية</button>
+                    <button onclick="setFilter('expiring')" id="filter-expiring" class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap">قارب على الانتهاء</button>
+                    <button onclick="setFilter('expired')" id="filter-expired" class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap">المنتهية</button>
+                </div>
+            </div>
+
+            <!-- Members Table -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/60 border-b border-slate-700 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                <th class="py-4 px-6">المشترك</th>
+                                <th class="py-4 px-6">رقم الهاتف</th>
+                                <th class="py-4 px-6">نوع الاشتراك</th>
+                                <th class="py-4 px-6">تاريخ البداية</th>
+                                <th class="py-4 px-6">تاريخ الانتهاء</th>
+                                <th class="py-4 px-6">الحالة</th>
+                                <th class="py-4 px-6 text-center">حضور اليوم</th>
+                                <th class="py-4 px-6 text-center">المبلغ</th>
+                                <th class="py-4 px-6 text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTableBody" class="divide-y divide-slate-700 text-sm"></tbody>
+                    </table>
+                </div>
+                <div id="emptyState" class="hidden text-center py-16">
+                    <div class="text-slate-500 text-5xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
+                    <p class="text-slate-400 font-medium text-base">لا توجد اشتراكات مسجلة حالياً</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 👑 صفحة لوحة تحكم الآدمن المستقلة -->
+    <!-- ========================================== -->
+    <div id="adminDashboard" class="flex flex-col min-h-screen w-full hidden">
+        <header class="bg-slate-800 border-b border-slate-700 shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-rose-500 text-slate-900 p-3 rounded-xl shadow-md font-bold text-xl flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-black tracking-wide text-white">لوحة تحكم المدير العام</h1>
+                        <p class="text-xs text-slate-400">تقارير وأرشيف الشيفتات الشاملة</p>
+                    </div>
+                </div>
+                <button onclick="backToCashier()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>العودة لوحة الكاشير</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-3">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-500"></i>
+                    <span>أرشيف تقارير الشيفتات وتعديلها أو حذفها</span>
+                </h2>
+                <p class="text-xs text-slate-400">راجع هنا كل تقفيلات الورديات السابقة، ويمكنك تعديل بيانات أي شيفت أو حذفه بالكامل:</p>
+                
+                <div class="space-y-3" id="fullArchiveList"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 border-t border-slate-700 py-4 text-center text-xs text-slate-400 mt-auto">
+        <p>نظام إدارة الجيم الاحترافي &copy; 2026 - جميع الحقوق محفوظة</p>
+    </footer>
+
+    <!-- Shift Closing Modal -->
+    <div id="shiftModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-5">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-700">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-cash-register text-emerald-400"></i><span>تقرير تقفيل الشิفت</span></h3>
+                <button onclick="closeShiftModal()" class="text-slate-400 hover:text-white transition p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between py-1 border-b border-slate-700/60"><span class="text-slate-400">إيرادات الاشتراكات:</span><span id="shiftSubRev" class="font-bold font-mono text-amber-400">0 ج.م</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-700/60"><span class="text-slate-400">مبيعات الكافيه:</span><span id="shiftStoreRev" class="font-bold font-mono text-purple-400">0 ج.م</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-700/60"><span class="text-slate-400">إجمالي المصاريف:</span><span id="shiftExpenses" class="font-bold font-mono text-rose-400">0 ج.م</span></div>
+                <div class="flex justify-between py-2 bg-slate-900/60 px-3 rounded-xl border border-slate-700 font-black text-base"><span class="text-white">إجمالي الكاش بالدرج:</span><span id="shiftNet" class="font-mono text-cyan-400">0 ج.م</span></div>
+            </div>
+
+            <div class="flex gap-2.5 pt-2">
+                <button onclick="printShiftReport()" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow"><i class="fa-solid fa-print"></i><span>طباعة التقرير</span></button>
+                <button onclick="resetShift()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-900 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg"><i class="fa-solid fa-rotate"></i><span>حفظ وتصفير الخزنة</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Archive Modal (نافذة تعديل الشيفت للأرشيف) -->
+    <div id="editArchiveModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-700">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-amber-500"></i><span>تعديل تقفيل الشيفت</span></h3>
+                <button onclick="closeEditArchiveModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="saveArchiveEdit(event)" class="space-y-3">
+                <input type="hidden" id="editArcId">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">إيرادات الاشتراكات (ج.م)</label><input type="number" id="editSubRev" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 font-mono"></div>
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">مبيعات الكافيه (ج.م)</label><input type="number" id="editStoreRev" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 font-mono"></div>
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">إجمالي المصاريف (ج.م)</label><input type="number" id="editExp" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 font-mono"></div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-sm transition mt-2">حفظ التعديلات</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modals for Members, Sales, Expenses -->
+    <div id="memberModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-700">
+                <h3 id="modalTitle" class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-user-plus text-amber-500"></i><span>إضافة مشترِك جديد</span></h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="memberForm" onsubmit="saveMember(event)" class="space-y-4">
+                <input type="hidden" id="memberDocId">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">اسم المشترك</label><input type="text" id="name" required placeholder="أدخل اسم المشترك" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">رقم الهاتف</label><input type="tel" id="phone" required placeholder="010xxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"></div>
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">نوع الاشتراك</label><select id="planType" onchange="calculateEndDate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"><option value="شهر">شهر واحد</option><option value="3 شهور">3 شهور</option><option value="6 شهور">6 شهور</option><option value="سنة">سنة كاملة</option><option value="حصة / يومي">حصة / يومي</option></select></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">تاريخ البداية</label><input type="date" id="startDate" required onchange="calculateEndDate()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"></div>
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">تاريخ الانتهاء</label><input type="date" id="endDate" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"></div>
+                </div>
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1.5">المبلغ المدفوع (ج.م)</label><input type="number" id="amount" required min="0" placeholder="المبلغ المدفوع" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"></div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-700 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-xl bg-slate-700 text-slate-200 text-sm font-semibold">إلغاء</button>
+                    <button type="submit" id="saveBtn" class="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-900 text-sm font-bold shadow-md">حفظ الاشتِراك</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sales Modal -->
+    <div id="salesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-700"><h3 class="text-lg font-bold text-white"><i class="fa-solid fa-store text-amber-500 ml-2"></i>مبيعات الكافيه</h3><button onclick="closeSalesModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <form onsubmit="saveSale(event)" class="space-y-3">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">اسم المنتج أو المشروب</label><input type="text" id="saleItem" required placeholder="مثال: مياه، عصير..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1">الكمية</label><input type="number" id="saleQty" required min="1" value="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100"></div>
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-1">السعر الإجمالي</label><input type="number" id="saleAmount" required min="0" placeholder="المبلغ" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100"></div>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-900 font-bold text-sm">تسجيل البيع</button>
+            </form>
+            <div class="max-h-40 overflow-y-auto divide-y divide-slate-700 text-xs mt-2" id="salesList"></div>
+        </div>
+    </div>
+
+    <!-- Expenses Modal -->
+    <div id="expensesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-700"><h3 class="text-lg font-bold text-white"><i class="fa-solid fa-file-invoice-dollar text-rose-500 ml-2"></i>إدارة المصاريف</h3><button onclick="closeExpensesModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+            <form onsubmit="saveExpense(event)" class="space-y-3">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">بند المصروف</label><input type="text" id="expTitle" required placeholder="مثال: كهرباء، إيجار..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100"></div>
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">المبلغ (ج.م)</label><input type="number" id="expAmount" required min="0" placeholder="القيمة" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100"></div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-900 font-bold text-sm">إضافة المصروف</button>
+            </form>
+            <div class="max-h-40 overflow-y-auto divide-y divide-slate-700 text-xs mt-2" id="expensesList"></div>
+        </div>
+    </div>
+
+    <!-- Print Sections -->
+    <div id="printSection" class="hidden p-8 bg-white text-slate-900 font-cairo max-w-md mx-auto my-10 rounded-2xl shadow-xl">
+        <div class="text-center pb-4 border-b border-dashed border-slate-300"><h2 class="text-2xl font-black">إيصال اشتراك جيم</h2><p class="text-xs text-slate-500 mt-1" id="receiptDate"></p></div>
+        <div class="py-4 space-y-2 text-sm">
+            <div class="flex justify-between"><span>اسم المشترك:</span><span id="rName" class="font-bold">---</span></div>
+            <div class="flex justify-between"><span>رقم الهاتف:</span><span id="rPhone" class="font-mono">---</span></div>
+            <div class="flex justify-between"><span>نوع الاشتراك:</span><span id="rPlan" class="font-bold">---</span></div>
+            <div class="flex justify-between"><span>بداية الاشتراك:</span><span id="rStart" class="font-mono">---</span></div>
+            <div class="flex justify-between"><span>نهاية الاشتراك:</span><span id="rEnd" class="font-mono">---</span></div>
+        </div>
+        <div class="pt-4 border-t border-dashed border-slate-300 flex justify-between items-center text-base font-black"><span>المبلغ المدفوع:</span><span id="rAmount" class="text-amber-600 font-mono">0 ج.م</span></div>
+    </div>
+
+    <div id="shiftPrintSection" class="hidden p-8 bg-white text-slate-900 font-cairo max-w-md mx-auto my-10 rounded-2xl shadow-xl">
+        <div class="text-center pb-4 border-b border-dashed border-slate-300"><h2 class="text-2xl font-black">تقرير تقفيل الشิفت</h2><p class="text-xs text-slate-500 mt-1" id="shiftPrintDate"></p></div>
+        <div class="py-4 space-y-3 text-sm">
+            <div class="flex justify-between"><span>إيرادات الاشتراكات:</span><span id="spSub" class="font-bold font-mono">0 ج.م</span></div>
+            <div class="flex justify-between"><span>مبيعات الكافيه:</span><span id="spStore" class="font-bold font-mono">0 ج.م</span></div>
+            <div class="flex justify-between"><span>إجمالي المصاريف:</span><span id="spExp" class="font-bold font-mono text-rose-600">0 ج.م</span></div>
+        </div>
+        <div class="pt-4 border-t border-dashed border-slate-300 flex justify-between items-center text-lg font-black"><span>صافي الكاش بالدرج:</span><span id="spNet" class="text-emerald-600 font-mono">0 ج.م</span></div>
+    </div>
+
+    <!-- Firebase Script Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnuLg2GDV7bRBJbsBx65VGTCk0DpblJ_A",
+            authDomain: "gymsystem-95eb9.firebaseapp.com",
+            projectId: "gymsystem-95eb9",
+            storageBucket: "gymsystem-95eb9.firebasestorage.app",
+            messagingSenderId: "251678513828",
+            appId: "1:251678513828:web:29a67ab1aaf4f3a054e431",
+            measurementId: "G-PT77ZTJG9P"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+
+        const ADMIN_PIN = "1234";
+        let adminClickCount = 0;
+        let adminClickTimer = null;
+
+        window.handleAdminTrigger = function() {
+            adminClickCount++;
+            if (adminClickCount === 1) {
+                adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
+            } else if (adminClickCount === 3) {
+                clearTimeout(adminClickTimer);
+                adminClickCount = 0;
+                const pin = prompt("🔐 لوحة تحكم المدير العام\nأدخل الرقم السري للوصول للصفحة الكاملة:");
+                if (pin === ADMIN_PIN) {
+                    document.getElementById('cashierView').classList.add('hidden');
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                    renderArchive();
+                } else if (pin !== null) {
+                    alert("❌ الرقم السري غير صحيح!");
+                }
+            }
+        }
+
+        window.backToCashier = function() {
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('cashierView').classList.remove('hidden');
+        }
+
+        function verifyAdmin() {
+            const pin = prompt("🔐 عملية خاصة بمدير النظام.\nأدخل الرقم السري للآدمن:");
+            if (pin === null) return false;
+            if (pin !== ADMIN_PIN) {
+                alert("❌ الرقم السري غير صحيح!");
+                return false;
+            }
+            return true;
+        }
+
+        let members = [];
+        let expenses = [];
+        let sales = [];
+        let shiftArchives = [];
+        let currentFilter = 'all';
+
+        const syncStatus = document.getElementById('syncStatus');
+        
+        try {
+            onSnapshot(collection(db, "gym_members"), (snapshot) => {
+                members = [];
+                snapshot.forEach((docSnap) => { members.push({ id: docSnap.id, ...docSnap.data() }); });
+                syncStatus.innerHTML = `<i class="fa-solid fa-circle text-[8px] text-emerald-400"></i> متصل بالسحاب`;
+                syncStatus.className = "text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5";
+                renderApp();
+            });
+
+            onSnapshot(collection(db, "gym_expenses"), (snapshot) => {
+                expenses = [];
+                snapshot.forEach((docSnap) => { expenses.push({ id: docSnap.id, ...docSnap.data() }); });
+                renderExpenses();
+                renderApp();
+            });
+
+            onSnapshot(collection(db, "gym_sales"), (snapshot) => {
+                sales = [];
+                snapshot.forEach((docSnap) => { sales.push({ id: docSnap.id, ...docSnap.data() }); });
+                renderSales();
+                renderApp();
+            });
+
+            onSnapshot(collection(db, "gym_shift_archives"), (snapshot) => {
+                shiftArchives = [];
+                snapshot.forEach((docSnap) => { shiftArchives.push({ id: docSnap.id, ...docSnap.data() }); });
+                renderArchive();
+            });
+        } catch (e) {
+            console.error(e);
+        }
+
+        window.openModal = function(editDocId = null) {
+            const modal = document.getElementById('memberModal');
+            const form = document.getElementById('memberForm');
+            const modalTitle = document.getElementById('modalTitle');
+            form.reset();
+            
+            if (editDocId !== null) {
+                modalTitle.innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i><span>تعديل بيانات المشترك</span>`;
+                const member = members.find(m => m.id === editDocId);
+                if (member) {
+                    document.getElementById('memberDocId').value = member.id;
+                    document.getElementById('name').value = member.name;
+                    document.getElementById('phone').value = member.phone;
+                    document.getElementById('planType').value = member.planType;
+                    document.getElementById('startDate').value = member.startDate;
+                    document.getElementById('endDate').value = member.endDate;
+                    document.getElementById('amount').value = member.amount;
+                }
+            } else {
+                modalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-amber-500"></i><span>إضافة مشترِك جديد</span>`;
+                document.getElementById('memberDocId').value = '';
+                document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+                window.calculateEndDate();
+            }
+            modal.classList.remove('hidden');
+        }
+
+        window.closeModal = function() { document.getElementById('memberModal').classList.add('hidden'); }
+        window.openExpensesModal = function() { document.getElementById('expensesModal').classList.remove('hidden'); }
+        window.closeExpensesModal = function() { document.getElementById('expensesModal').classList.add('hidden'); }
+        window.openSalesModal = function() { document.getElementById('salesModal').classList.remove('hidden'); }
+        window.closeSalesModal = function() { document.getElementById('salesModal').classList.add('hidden'); }
+
+        window.openShiftModal = function() {
+            const subRev = members.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+            const storeRev = sales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+            const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+            const netCash = (subRev + storeRev) - totalExp;
+
+            document.getElementById('shiftSubRev').innerText = subRev.toLocaleString() + " ج.م";
+            document.getElementById('shiftStoreRev').innerText = storeRev.toLocaleString() + " ج.م";
+            document.getElementById('shiftExpenses').innerText = totalExp.toLocaleString() + " ج.م";
+            document.getElementById('shiftNet').innerText = netCash.toLocaleString() + " ج.م";
+
+            document.getElementById('shiftModal').classList.remove('hidden');
+        }
+
+        window.closeShiftModal = function() { document.getElementById('shiftModal').classList.add('hidden'); }
+
+        window.printShiftReport = function() {
+            const subRev = members.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+            const storeRev = sales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+            const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+            const netCash = (subRev + storeRev) - totalExp;
+
+            document.getElementById('spSub').innerText = subRev.toLocaleString() + " ج.م";
+            document.getElementById('spStore').innerText = storeRev.toLocaleString() + " ج.م";
+            document.getElementById('spExp').innerText = totalExp.toLocaleString() + " ج.م";
+            document.getElementById('spNet').innerText = netCash.toLocaleString() + " ج.م";
+            document.getElementById('shiftPrintDate').innerText = "التاريخ: " + new Date().toISOString().split('T')[0];
+            window.print();
+        }
+
+        window.resetShift = async function() {
+            if (confirm('⚠️ هل أنت متأكد من حفظ تقفيل الشิفت في الأرشيف وتصفير الخزنة لبدء وردية جديدة؟')) {
+                try {
+                    const todayDate = new Date().toISOString().split('T')[0];
+                    const subRev = members.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+                    const storeRev = sales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+                    const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+                    const netCash = (subRev + storeRev) - totalExp;
+
+                    await addDoc(collection(db, "gym_shift_archives"), {
+                        date: todayDate,
+                        timestamp: new Date().toLocaleTimeString(),
+                        subRevenue: subRev,
+                        storeRevenue: storeRev,
+                        expensesTotal: totalExp,
+                        netProfit: netCash,
+                        membersCount: members.length
+                    });
+
+                    for (let exp of expenses) { await deleteDoc(doc(db, "gym_expenses", exp.id)); }
+                    for (let sale of sales) { await deleteDoc(doc(db, "gym_sales", sale.id)); }
+
+                    alert("✅ تم تقفيل الشيفت وأرشفته وتصفير الخزنة بنجاح!");
+                    window.closeShiftModal();
+                } catch (error) {
+                    alert("❌ حدث خطأ أثناء التصفير أو الأرشفة: " + error.message);
+                }
+            }
+        }
+
+        // 📝 فتح نافذة تعديل تقفيل الشيفت (خاص بالآدمن)
+        window.openEditArchiveModal = function(id) {
+            if (!verifyAdmin()) return;
+            const arc = shiftArchives.find(a => a.id === id);
+            if (!arc) return;
+            document.getElementById('editArcId').value = arc.id;
+            document.getElementById('editSubRev').value = arc.subRevenue;
+            document.getElementById('editStoreRev').value = arc.storeRevenue;
+            document.getElementById('editExp').value = arc.expensesTotal;
+            document.getElementById('editArchiveModal').classList.remove('hidden');
+        }
+
+        window.closeEditArchiveModal = function() {
+            document.getElementById('editArchiveModal').classList.add('hidden');
+        }
+
+        window.saveArchiveEdit = async function(event) {
+            event.preventDefault();
+            const id = document.getElementById('editArcId').value;
+            const subRevenue = parseFloat(document.getElementById('editSubRev').value) || 0;
+            const storeRevenue = parseFloat(document.getElementById('editStoreRev').value) || 0;
+            const expensesTotal = parseFloat(document.getElementById('editExp').value) || 0;
+            const netProfit = (subRevenue + storeRevenue) - expensesTotal;
+
+            try {
+                await updateDoc(doc(db, "gym_shift_archives", id), {
+                    subRevenue, storeRevenue, expensesTotal, netProfit
+                });
+                alert("✅ تم تحديث بيانات الشيفت بنجاح!");
+                closeEditArchiveModal();
+            } catch (error) {
+                alert("❌ خطأ في التحديث: " + error.message);
+            }
+        }
+
+        // 🗑️ حذف تقفيل شيفت من الأرشيف (خاص بالآدمن)
+        window.deleteArchive = async function(id) {
+            if (!verifyAdmin()) return;
+            if (confirm('⚠️ هل أنت متأكد من حذف تقفيل هذا الشيفت نهائياً من الأرشيف؟')) {
+                try {
+                    await deleteDoc(doc(db, "gym_shift_archives", id));
+                    alert("✅ تم الحذف بنجاح!");
+                } catch (error) {
+                    alert("❌ خطأ في الحذف: " + error.message);
+                }
+            }
+        }
+
+        function renderArchive() {
+            const list = document.getElementById('fullArchiveList');
+            if(!list) return;
+            list.innerHTML = '';
+            
+            if (shiftArchives.length === 0) {
+                list.innerHTML = `<p class="text-center text-slate-500 py-8">لا توجد تقارير شيفتات مسجلة في الأرشيف حتى الآن</p>`;
+                return;
+            }
+
+            shiftArchives.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            shiftArchives.forEach(arc => {
+                list.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-md">
+                        <div class="space-y-1">
+                            <h3 class="font-black text-amber-400 text-base"><i class="fa-solid fa-calendar-day ml-2"></i> تاريخ التقفيل: ${arc.date} <span class="text-xs text-slate-400 font-normal">(${arc.timestamp || ''})</span></h3>
+                            <div class="flex flex-wrap gap-4 text-xs text-slate-300 pt-1">
+                                <span>إجمالي المشتركين: <strong class="text-white">${arc.membersCount || 0}</strong></span>
+                                <span>إيرادات الاشتراكات: <strong class="text-emerald-400 font-mono">${arc.subRevenue} ج.م</strong></span>
+                                <span>مبيعات الكافيه: <strong class="text-purple-400 font-mono">${arc.storeRevenue} ج.م</strong></span>
+                                <span>المصاريف: <strong class="text-rose-400 font-mono">${arc.expensesTotal} ج.م</strong></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                            <div class="bg-cyan-500/15 text-cyan-400 px-4 py-2 rounded-xl font-black text-sm font-mono border border-cyan-500/20 whitespace-nowrap">
+                                صافي الكاش: ${arc.netProfit} ج.م
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="openEditArchiveModal('${arc.id}')" title="تعديل الشيفت" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition border border-slate-700"><i class="fa-solid fa-pen text-xs"></i></button>
+                                <button onclick="deleteArchive('${arc.id}')" title="حذف الشيفت" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white p-2.5 rounded-xl transition border border-rose-500/30"><i class="fa-solid fa-trash text-xs"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.calculateEndDate = function() {
+            const startDateVal = document.getElementById('startDate').value;
+            const planType = document.getElementById('planType').value;
+            if (!startDateVal) return;
+            let start = new Date(startDateVal);
+            let end = new Date(start);
+            switch (planType) {
+                case 'شهر': end.setMonth(end.getMonth() + 1); break;
+                case '3 شهور': end.setMonth(end.getMonth() + 3); break;
+                case '6 شهور': end.setMonth(end.getMonth() + 6); break;
+                case 'سنة': end.setFullYear(end.getFullYear() + 1); break;
+                case 'حصة / يومي': break;
+            }
+            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+        }
+
+        window.saveMember = async function(event) {
+            event.preventDefault();
+            const docId = document.getElementById('memberDocId').value;
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const planType = document.getElementById('planType').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+
+            try {
+                if (docId) {
+                    await updateDoc(doc(db, "gym_members", docId), { name, phone, planType, startDate, endDate, amount });
+                } else {
+                    await addDoc(collection(db, "gym_members"), { name, phone, planType, startDate, endDate, amount, checkIns: {} });
+                }
+                window.closeModal();
+            } catch (error) { alert("خطأ: " + error.message); }
+        }
+
+        window.deleteMember = async function(docId) {
+            const pin = prompt("🔐 عملية حذف خاصة بمدير النظام.\nأدخل الرقم السري للآدمن:");
+            if (pin !== ADMIN_PIN) { alert("❌ الرقم السري غير صحيح!"); return; }
+            if (confirm('هل أنت متأكد من حذف هذا المشترك نهائياً؟')) {
+                await deleteDoc(doc(db, "gym_members", docId));
+            }
+        }
+
+        window.toggleCheckIn = async function(docId) {
+            const member = members.find(m => m.id === docId);
+            if (!member) return;
+            const today = new Date().toISOString().split('T')[0];
+            let checkIns = member.checkIns || {};
+            checkIns[today] = !checkIns[today];
+            await updateDoc(doc(db, "gym_members", docId), { checkIns });
+        }
+
+        window.saveExpense = async function(event) {
+            event.preventDefault();
+            const title = document.getElementById('expTitle').value;
+            const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+            await addDoc(collection(db, "gym_expenses"), { title, amount, date: new Date().toISOString().split('T')[0] });
+            document.getElementById('expTitle').value = '';
+            document.getElementById('expAmount').value = '';
+        }
+
+        window.deleteExpense = async function(id) {
+            const pin = prompt("🔐 أدخل الرقم السري لحذف المصروف:");
+            if (pin !== ADMIN_PIN) { alert("❌ الرقم السري غير صحيح!"); return; }
+            await deleteDoc(doc(db, "gym_expenses", id));
+        }
+
+        window.saveSale = async function(event) {
+            event.preventDefault();
+            const item = document.getElementById('saleItem').value;
+            const qty = parseInt(document.getElementById('saleQty').value) || 1;
+            const amount = parseFloat(document.getElementById('saleAmount').value) || 0;
+            await addDoc(collection(db, "gym_sales"), { item, qty, amount, date: new Date().toISOString().split('T')[0] });
+            document.getElementById('saleItem').value = '';
+            document.getElementById('saleQty').value = '1';
+            document.getElementById('saleAmount').value = '';
+        }
+
+        window.deleteSale = async function(id) {
+            const pin = prompt("🔐 أدخل الرقم السري لحذف المبيعة:");
+            if (pin !== ADMIN_PIN) { alert("❌ الرقم السري غير صحيح!"); return; }
+            await deleteDoc(doc(db, "gym_sales", id));
+        }
+
+        function renderExpenses() {
+            const list = document.getElementById('expensesList');
+            if(!list) return;
+            list.innerHTML = '';
+            expenses.forEach(e => {
+                list.innerHTML += `
+                    <div class="py-2 flex justify-between items-center">
+                        <div><p class="font-bold text-slate-200">${e.title}</p><p class="text-[10px] text-slate-400">${e.date}</p></div>
+                        <div class="flex items-center gap-3"><span class="font-mono text-rose-400 font-bold">${e.amount} ج.م</span><button onclick="deleteExpense('${e.id}')" class="text-rose-500 hover:text-rose-300"><i class="fa-solid fa-trash text-xs"></i></button></div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderSales() {
+            const list = document.getElementById('salesList');
+            if(!list) return;
+            list.innerHTML = '';
+            sales.forEach(s => {
+                list.innerHTML += `
+                    <div class="py-2 flex justify-between items-center">
+                        <div><p class="font-bold text-slate-200">${s.item} <span class="text-xs text-slate-400">(العدد: ${s.qty})</span></p><p class="text-[10px] text-slate-400">${s.date}</p></div>
+                        <div class="flex items-center gap-3"><span class="font-mono text-purple-400 font-bold">${s.amount} ج.م</span><button onclick="deleteSale('${s.id}')" class="text-rose-500 hover:text-rose-300"><i class="fa-solid fa-trash text-xs"></i></button></div>
+                    </div>
+                `;
+            });
+        }
+
+        window.printReceipt = function(id) {
+            const m = members.find(x => x.id === id);
+            if (!m) return;
+            document.getElementById('rName').innerText = m.name;
+            document.getElementById('rPhone').innerText = m.phone;
+            document.getElementById('rPlan').innerText = m.planType;
+            document.getElementById('rStart').innerText = m.startDate;
+            document.getElementById('rEnd').innerText = m.endDate;
+            document.getElementById('rAmount').innerText = m.amount + " ج.م";
+            document.getElementById('receiptDate').innerText = "التاريخ: " + new Date().toISOString().split('T')[0];
+            window.print();
+        }
+
+        window.setFilter = function(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-slate-900');
+                btn.classList.add('bg-slate-900', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            activeBtn.classList.remove('bg-slate-900', 'text-slate-300');
+            activeBtn.classList.add('bg-amber-500', 'text-slate-900');
+            renderApp();
+        }
+
+        function renderApp() {
+            const tbody = document.getElementById('membersTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const threeDaysLater = new Date();
+            threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+            const threeDaysStr = threeDaysLater.toISOString().split('T')[0];
+
+            let filtered = members.filter(m => {
+                const isExpired = m.endDate < todayStr;
+                const isExpiring = !isExpired && m.endDate <= threeDaysStr;
+
+                if (currentFilter === 'active' && isExpired) return false;
+                if (currentFilter === 'expiring' && (!isExpiring || isExpired)) return false;
+                if (currentFilter === 'expired' && !isExpired) return false;
+                if (searchQuery && !m.name.toLowerCase().includes(searchQuery) && !m.phone.includes(searchQuery)) return false;
+                return true;
+            });
+
+            const subRev = members.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+            const storeRev = sales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+            const totalRev = subRev + storeRev;
+            const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+            const netProfit = totalRev - totalExp;
+
+            document.getElementById('statTotal').innerText = members.length;
+            document.getElementById('statActive').innerText = members.filter(m => m.endDate >= todayStr).length;
+            document.getElementById('statSubRevenue').innerText = subRev.toLocaleString();
+            document.getElementById('statStoreRevenue').innerText = storeRev.toLocaleString();
+            document.getElementById('statExpenses').innerText = totalExp.toLocaleString();
+            document.getElementById('statNetProfit').innerText = netProfit.toLocaleString();
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0));
+
+            filtered.forEach(m => {
+                const isExpired = m.endDate < todayStr;
+                const isExpiring = !isExpired && m.endDate <= threeDaysStr;
+                const checkedToday = m.checkIns && m.checkIns[todayStr];
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-700/40 transition duration-150";
+
+                let statusBadge = isExpired 
+                    ? `<span class="inline-flex items-center gap-1.5 bg-rose-500/15 text-rose-400 px-3 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-circle text-[8px]"></i> منتهي</span>` 
+                    : isExpiring 
+                    ? `<span class="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-400 px-3 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-circle text-[8px]"></i> قريب الانتهاء</span>`
+                    : `<span class="inline-flex items-center gap-1.5 bg-emerald-500/15 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-circle text-[8px]"></i> ساري</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-4 px-6 font-semibold text-white">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-amber-400 font-bold text-xs">${m.name ? m.name.charAt(0) : '?'}</div>
+                            <span>${m.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-slate-300 font-mono text-xs" dir="ltr">${m.phone}</td>
+                    <td class="py-4 px-6"><span class="bg-slate-700/80 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-medium">${m.planType}</span></td>
+                    <td class="py-4 px-6 text-slate-300 font-mono text-xs">${m.startDate}</td>
+                    <td class="py-4 px-6 text-slate-300 font-mono text-xs">${m.endDate}</td>
+                    <td class="py-4 px-6">${statusBadge}</td>
+                    <td class="py-4 px-6 text-center">
+                        <button onclick="toggleCheckIn('${m.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition ${checkedToday ? 'bg-emerald-500 text-slate-900 shadow-md' : 'bg-slate-700 text-slate-400 hover:text-white'}">
+                            <i class="fa-solid ${checkedToday ? 'fa-check' : 'fa-xmark'}"></i> ${checkedToday ? 'حضر اليوم' : 'تسجيل حضور'}
+                        </button>
+                    </td>
+                    <td class="py-4 px-6 text-center font-bold text-amber-400 font-mono">${Number(m.amount).toLocaleString()} ج.م</td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="printReceipt('${m.id}')" title="طباعة إيصال" class="bg-slate-700 hover:bg-slate-600 text-slate-200 p-2 rounded-xl transition"><i class="fa-solid fa-print text-xs"></i></button>
+                            <button onclick="openModal('${m.id}')" title="تعديل" class="bg-slate-700 hover:bg-slate-600 text-slate-200 p-2 rounded-xl transition"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="deleteMember('${m.id}')" title="حذف" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white p-2 rounded-xl transition"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.renderApp = renderApp;
+        window.renderMembers = renderApp;
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            const startDateInput = document.getElementById('startDate');
+            if(startDateInput) { startDateInput.value = today; window.calculateEndDate(); }
+        });
+    </script>
+</body>
+</html>
